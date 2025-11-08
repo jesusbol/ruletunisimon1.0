@@ -1,0 +1,995 @@
+<html lang="es">  
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prototipo ruleta FIsica- unisimon</title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: radial-gradient(circle at center, #0b1321 60%, #05080f);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+  }
+
+  #container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    flex-wrap: wrap;
+  }
+
+  #leftPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .canvasWrapper {
+    perspective: 1200px;
+  }
+
+  canvas {
+    background: transparent;
+    border-radius: 50%;
+    transition: filter 0.3s ease, transform 0.2s ease;
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  canvas.spinning {
+    filter: drop-shadow(0 0 15px #00ffffaa) brightness(1.2);
+  }
+
+  #message {
+    margin-top: 10px;
+    min-height: 40px;
+    text-align: center;
+    font-size: 18px;
+    transition: all 0.4s ease;
+  }
+
+  #betTable {
+    position: relative;
+    display: grid;
+    grid-template-columns: 40px repeat(12, 50px) 60px;
+    grid-template-rows: repeat(3, 50px) 40px 40px;
+    gap: 3px;
+    background: #061126;
+    padding: 5px;
+    border-radius: 12px;
+    margin-top: 10px;
+    box-shadow: 0 0 10px #0ff2ff55;
+    max-width: 100%;
+    overflow: auto;
+  }
+
+  .cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.2s;
+    color: white;
+    position: relative;
+    user-select: none;
+  }
+
+  .cell:hover { transform: scale(1.05); box-shadow: 0 0 8px #00ffff66; }
+
+  .green { background: #008000; }
+  .red { background: #b40000; }
+  .black { background: #111; color: #fff; }
+  .special { background: #001a33; border: 1px solid #0ff3; }
+
+  .chipOverlay {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, #00ffff 0%, #007777 70%);
+    min-width: 28px;
+    height: 28px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-weight: bold;
+    pointer-events: none;
+    box-shadow: 0 0 8px #00ffff;
+    transform: translate(-50%, -50%);
+    animation: dropChip 0.2s ease-out;
+    white-space: nowrap;
+  }
+
+  @keyframes dropChip {
+    from { transform: translate(-50%, -200%); opacity: 0; }
+    to { transform: translate(-50%, -50%); opacity: 1; }
+  }
+
+  #rightPanel {
+    width: 320px;
+    background: #0d162b;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 0 10px #00ffff33;
+    max-height: 90vh;
+    overflow: auto;
+  }
+
+  .slider-group { display: flex; flex-direction: column; gap: 4px; }
+
+  input[type=range] { width: 100%; }
+
+  #chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .chip {
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 0 6px #00ffff99;
+    transition: 0.2s;
+    background: linear-gradient(180deg,#00e0ff,#00b3b3);
+    color: #000;
+  }
+
+  .chip:hover { transform: scale(1.1); }
+
+  .activeChip { outline: 3px solid #0ff; }
+
+  #balance { font-size: 18px; text-align: center; font-weight: bold; }
+
+  button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #00bfff;
+    color: #fff;
+    transition: 0.2s;
+  }
+
+  button:hover { background: #00ffff; color: #000; }
+
+  #result { text-align: center; font-size: 16px; color: #00ffff; }
+
+  #bigResult {
+    font-size: 28px;
+    font-weight: 900;
+    color: #ffd700;
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  .highlightPrediction {
+    animation: glowPrediction 1s ease-in-out infinite alternate;
+    box-shadow: 0 0 12px #00ffff;
+  }
+
+  @keyframes glowPrediction {
+    from { box-shadow: 0 0 5px #00ffff; }
+    to { box-shadow: 0 0 20px #00ffff; }
+  }
+
+  #predictBtn { background: #7bff7b; color: #000; }
+
+  #controlsRow {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  #stats {
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .statRow { display: flex; justify-content: space-between; margin-bottom: 6px; }
+
+  .hotcold { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .tag {
+    background: rgba(255,255,255,0.04);
+    padding: 6px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  #autoplayControls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  #soundToggle { cursor: pointer; text-align: center; margin-top: 6px; }
+
+  #unisimonLogo {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 180px;
+    max-width: 45%;
+    z-index: 1000;
+    filter: drop-shadow(0 0 5px #00ffff88);
+    transition: transform 0.3s ease;
+  }
+  #unisimonLogo:hover { transform: scale(1.05); }
+
+  /* --- RESPONSIVE DESIGN --- */
+  @media (max-width: 1000px) {
+    #container { flex-direction: column; align-items: center; }
+    #rightPanel { width: 90%; max-width: 600px; }
+  }
+
+  @media (max-width: 768px) {
+    canvas { width: 320px !important; height: 320px !important; }
+    #betTable {
+      grid-template-columns: 30px repeat(12, 35px) 40px;
+      grid-template-rows: repeat(3, 35px) 30px 30px;
+      font-size: 12px;
+    }
+    .chip { width: 40px; height: 40px; font-size: 12px; }
+    button { flex: 1; font-size: 13px; padding: 8px; }
+    #rightPanel { width: 95%; padding: 10px; }
+  }
+
+  @media (max-width: 480px) {
+    body { padding-top: 60px; }
+    #unisimonLogo { width: 120px; top: 5px; left: 5px; }
+    #container { gap: 10px; padding: 10px; }
+    canvas { width: 260px !important; height: 260px !important; }
+    #message { font-size: 14px; }
+    #betTable {
+      grid-template-columns: 25px repeat(12, 28px) 32px;
+      grid-template-rows: repeat(3, 28px) 25px 25px;
+      font-size: 10px;
+      gap: 2px;
+    }
+    .chip { width: 35px; height: 35px; font-size: 11px; }
+    #bigResult { font-size: 20px; }
+  }
+</style>
+
+
+</style>
+</head>
+<body>
+  <img src="unisimon-logo.png" alt="Unisimón" id="unisimonLogo">
+
+<div id="container">
+  <div id="leftPanel">
+    <div class="canvasWrapper">
+      <canvas id="roulette" width="420" height="420"></canvas>
+    </div>
+    <div id="message"></div>
+    <div id="betTable"></div>
+  </div>
+
+  <div id="rightPanel">
+    <div id="balance"></div>
+    <div id="chips"></div>
+
+    <div class="slider-group">
+      <label>Velocidad Ruleta (rpm)</label>
+      <input type="range" id="rouletteSpeed" min="10" max="200" value="60" />
+      <label>Velocidad Bola (rpm)</label>
+      <input type="range" id="ballSpeed" min="10" max="400" value="120" />
+    </div>
+
+    <div id="controlsRow">
+      <button id="spin">Lanzar</button>
+      <button id="predictBtn">Predicción</button>
+      <button id="reset">Reset</button>
+    </div>
+
+    <div id="autoplayControls" style="margin-top:6px;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <label style="font-size:13px">Autoplay</label>
+        <input type="checkbox" id="autoToggle" />
+      </div>
+      <input type="number" id="autoCount" min="1" value="10" style="width:80px" />
+      <button id="autoStart">Start</button>
+    </div>
+
+    <div id="soundToggle" title="Silenciar/activar sonido" style="text-align:center; margin-top:6px; cursor:pointer;">🔊 Sonido: <span id="soundStatus">ON</span></div>
+
+    <div id="result"></div>
+    <div id="bigResult"></div>
+
+    <div id="stats">
+      <div class="statRow"><div>Spins totales:</div><div id="statTotal">0</div></div>
+      <div class="statRow"><div>Hits (número exacto):</div><div id="statHits">0</div></div>
+      <div class="statRow"><div>ROI estimado:</div><div id="statROI">0%</div></div>
+      <div style="margin-top:8px; font-weight:700">Hot (top 5)</div>
+      <div id="hotList" class="hotcold"></div>
+      <div style="margin-top:6px; font-weight:700">Cold (bottom 5)</div>
+      <div id="coldList" class="hotcold"></div>
+      <div style="margin-top:8px; font-weight:700">Predicción actual</div>
+      <div id="predictInfo" style="padding-top:6px">-</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== Setup básico ====== */
+const canvas = document.getElementById("roulette");
+const ctx = canvas.getContext("2d");
+const radius = canvas.width / 2;
+ctx.translate(radius, radius);
+
+const numbers = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6,
+  27, 13, 36, 11, 30, 8, 23, 10, 5, 24,
+  16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
+  7, 28, 12, 35, 3, 26
+];
+
+function getColor(num) {
+  if (num === 0) return "green";
+  return num % 2 === 0 ? "black" : "red";
+}
+
+/* estado */
+let rouletteAngle = 0;
+let ballAngle = -Math.PI/2;
+let spinning = false;
+let resultNumber = null;
+let history = JSON.parse(localStorage.getItem("history") || "[]");
+let activeChip = 1000;
+let bets = [];
+let balance = parseInt(localStorage.getItem("balance")) || 50000;
+let predictedNumber = null;
+
+/* estadisticas */
+let statsCount = {}; // contador por numero
+for (let n of numbers) statsCount[n] = (statsCount[n]||0);
+let totalSpins = parseInt(localStorage.getItem("totalSpins")) || 0;
+let totalWinsAmount = parseInt(localStorage.getItem("totalWinsAmount")) || 0;
+let totalStaked = parseInt(localStorage.getItem("totalStaked")) || 0;
+
+/* autoplay y sonido */
+let autoplayRunning = false;
+let audioEnabled = true;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* UI references */
+const chipsContainer = document.getElementById("chips");
+const table = document.getElementById("betTable");
+const messageEl = document.getElementById("message");
+const resultEl = document.getElementById("result");
+const bigResultEl = document.getElementById("bigResult");
+const spinBtn = document.getElementById("spin");
+const predictBtn = document.getElementById("predictBtn");
+
+const statTotalEl = document.getElementById("statTotal");
+const statHitsEl = document.getElementById("statHits");
+const statROIEl = document.getElementById("statROI");
+const hotListEl = document.getElementById("hotList");
+const coldListEl = document.getElementById("coldList");
+const predictInfoEl = document.getElementById("predictInfo");
+
+const autoToggle = document.getElementById("autoToggle");
+const autoCount = document.getElementById("autoCount");
+const autoStartBtn = document.getElementById("autoStart");
+const soundToggle = document.getElementById("soundToggle");
+const soundStatus = document.getElementById("soundStatus");
+
+/* dibujar ruleta y bola (efecto 3D: rotamos ligeramente según ángulo) */
+function drawRoulette(angle=rouletteAngle, ballA=ballAngle) {
+  ctx.clearRect(-radius, -radius, canvas.width, canvas.height);
+  const step = (2 * Math.PI) / numbers.length;
+
+  // efecto ligero de inclinación 3D: mapear sin(angle) a tilt
+  const tilt = Math.sin(angle * 0.3) * 0.06; // -0.06..0.06
+  canvas.style.transform = `rotateX(${tilt * 40}deg)`; // usar CSS transform para simular 3D
+
+  for (let i = 0; i < numbers.length; i++) {
+    const start = i * step + angle;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, start, start + step);
+    ctx.fillStyle = getColor(numbers[i]);
+    ctx.fill();
+
+    // número (rotado)
+    ctx.save();
+    ctx.rotate(start + step / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "white";
+    ctx.font = "bold 16px Poppins";
+    ctx.fillText(numbers[i], radius - 10, 5);
+    ctx.restore();
+  }
+
+  // centro dorado
+  ctx.beginPath();
+  ctx.arc(0, 0, 40, 0, 2*Math.PI);
+  ctx.fillStyle = "#d4af37";
+  ctx.fill();
+
+  // bola (posición absoluta en el canvas)
+  const ballR = radius - 15;
+  ctx.beginPath();
+  ctx.arc(Math.cos(ballA) * ballR, Math.sin(ballA) * ballR, 8, 0, 2*Math.PI);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+
+  // puntero superior
+  ctx.beginPath();
+  ctx.moveTo(-6, -radius - 8);
+  ctx.lineTo(6, -radius - 8);
+  ctx.lineTo(0, -radius + 6);
+  ctx.closePath();
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+}
+
+/* balance */
+function updateBalance(){
+  document.getElementById("balance").innerText = `Saldo: ${balance.toLocaleString()} COP`;
+  localStorage.setItem("balance", balance);
+}
+
+/* crear fichas UI */
+[1000,5000,10000,50000,100000,500000].forEach(v=>{
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.innerText = v/1000 + "k";
+  chip.addEventListener("click", ()=>{
+    if (spinning) return; // no cambiar ficha mientras gira
+    document.querySelectorAll(".chip").forEach(c=>c.classList.remove("activeChip"));
+    chip.classList.add("activeChip");
+    activeChip = v;
+  });
+  chipsContainer.appendChild(chip);
+});
+chipsContainer.children[0].classList.add("activeChip");
+
+/* construir tabla de apuestas */
+function buildBetTable() {
+  table.innerHTML = "";
+
+  const zeroCell = document.createElement("div");
+  zeroCell.className = "cell green";
+  zeroCell.textContent = "0";
+  zeroCell.dataset.type = "number";
+  zeroCell.dataset.value = 0;
+  zeroCell.style.gridRow = "1 / span 3";
+  table.appendChild(zeroCell);
+
+  const layout = [
+    [3,6,9,12,15,18,21,24,27,30,33,36],
+    [2,5,8,11,14,17,20,23,26,29,32,35],
+    [1,4,7,10,13,16,19,22,25,28,31,34]
+  ];
+
+  for (let r=0;r<3;r++){
+    for (let c=0;c<12;c++){
+      const num = layout[r][c];
+      const cell = document.createElement("div");
+      cell.className = `cell ${getColor(num)}`;
+      cell.textContent = num;
+      cell.dataset.type = "number";
+      cell.dataset.value = num;
+      table.appendChild(cell);
+    }
+    const colCell = document.createElement("div");
+    colCell.className = "cell special";
+    colCell.textContent = "2to1";
+    colCell.dataset.type = "column";
+    colCell.dataset.value = r; // 0,1,2 -> corresponde a esa columna lateral
+    table.appendChild(colCell);
+  }
+
+  ["1st 12", "2nd 12", "3rd 12"].forEach((txt, i)=>{
+    const cell = document.createElement("div");
+    cell.className = "cell special";
+    cell.textContent = txt;
+    cell.dataset.type = "dozen";
+    cell.dataset.value = i+1;
+    cell.style.gridColumn = `${2 + i*4} / span 4`;
+    cell.style.gridRow = "4";
+    table.appendChild(cell);
+  });
+
+  const specials = [
+    {text:"1–18",type:"low"},
+    {text:"Even",type:"even"},
+    {text:"Rojo",type:"red"},
+    {text:"Negro",type:"black"},
+    {text:"Odd",type:"odd"},
+    {text:"19–36",type:"high"}
+  ];
+
+  specials.forEach(s=>{
+    const cell = document.createElement("div");
+    cell.className = "cell special";
+    cell.textContent = s.text;
+    cell.dataset.type = s.type;
+    cell.style.gridRow = "5";
+    table.appendChild(cell);
+  });
+
+  // evento de apuesta (acumulativo). se bloquea si spinning === true
+  table.addEventListener("click", e=>{
+    if (spinning) return; // no permitir apuestas mientras gira
+    let cell = e.target;
+    if (!cell.classList.contains("cell")) {
+      cell = cell.closest(".cell");
+      if (!cell) return;
+    }
+
+    // validar saldo
+    if (balance < activeChip) return alert("Saldo insuficiente");
+    balance -= activeChip;
+    totalStaked += activeChip;
+    localStorage.setItem("totalStaked", totalStaked);
+    updateBalance();
+
+    // buscar overlay existente y sumar
+    const existing = cell.querySelector(".chipOverlay");
+    if (existing) {
+      const current = parseInt(existing.dataset.amount, 10) || 0;
+      const nuevo = current + activeChip;
+      existing.dataset.amount = nuevo;
+      existing.textContent = (nuevo/1000) + "k";
+      const found = bets.find(b => b.cell === cell);
+      if (found) found.amount += activeChip;
+      else { // seguridad
+        bets.push({type: cell.dataset.type, value: cell.dataset.value, amount: activeChip, cell: cell});
+      }
+    } else {
+      const chipOverlay = document.createElement("div");
+      chipOverlay.className = "chipOverlay";
+      chipOverlay.textContent = (activeChip/1000) + "k";
+      chipOverlay.dataset.amount = activeChip;
+      chipOverlay.style.left = "50%";
+      chipOverlay.style.top = "50%";
+      cell.appendChild(chipOverlay);
+      bets.push({type: cell.dataset.type, value: cell.dataset.value, amount: activeChip, cell: cell});
+    }
+  });
+}
+buildBetTable();
+
+/* inicializar UI */
+updateBalance();
+drawRoulette();
+renderHistory();
+updateStatsUI();
+
+/* utilidades */
+function indexOfNumber(num) {
+  return numbers.indexOf(Number(num));
+}
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+/* alinear ruleta y bola para que la bola caiga en index (animación fina) */
+function alignToNumber(index, extraRotations=4, alignDuration=1000, callback){
+  const step = (2 * Math.PI) / numbers.length;
+  const desiredGlobalAngle = -Math.PI/2;
+  const targetRouletteBase = desiredGlobalAngle - (index * step + step/2);
+  const targetRoulette = targetRouletteBase + extraRotations * 2 * Math.PI;
+
+  const startRoulette = rouletteAngle;
+  const startBall = ballAngle;
+  const endRoulette = targetRoulette;
+  const endBall = desiredGlobalAngle;
+
+  const startTime = performance.now();
+
+  function frame(now){
+    const elapsed = now - startTime;
+    const t = Math.min(1, elapsed / alignDuration);
+    const e = easeOutCubic(t);
+    rouletteAngle = startRoulette + (endRoulette - startRoulette) * e;
+    ballAngle = startBall + (endBall - startBall) * e;
+    drawRoulette(rouletteAngle, ballAngle);
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      rouletteAngle = endRoulette;
+      ballAngle = endBall;
+      drawRoulette(rouletteAngle, ballAngle);
+      if (callback) callback();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* sonido: funciones utilitarias simples con WebAudio */
+function playBeep(freq=440, duration=0.08, type='sine', gain=0.12){
+  if (!audioEnabled || audioCtx.state === 'suspended') return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = gain;
+  o.connect(g);
+  g.connect(audioCtx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+  setTimeout(()=>{ try{o.stop();}catch(e){} }, duration*1000 + 30);
+}
+function playSpinStart(){
+  playBeep(800, 0.06, 'sawtooth', 0.08);
+  setTimeout(()=>playBeep(600,0.05,'sine',0.06),60);
+}
+function playTick(){
+  playBeep(1400, 0.02, 'square', 0.02);
+}
+function playWin(){
+  playBeep(900,0.08,'sine',0.12);
+  setTimeout(()=>playBeep(1100,0.06,'sine',0.1),90);
+}
+
+/* Predicción: algoritmo simple basado en historial */
+function computePrediction(){
+  // Si no hay historial usar aleatorio
+  if (!history || history.length === 0) {
+    predictedNumber = numbers[Math.floor(Math.random()*numbers.length)];
+    predictInfoEl.innerText = `Predicho: ${predictedNumber} (basado en aleatorio — sin historial)`;
+    return predictedNumber;
+  }
+
+  // Contar frecuencia en ventana N (ej: últimos 50)
+  const windowN = 60;
+  const recent = history.slice(0, windowN);
+  const freq = {};
+  numbers.forEach(n=>freq[n]=0);
+  recent.forEach(r=>{ freq[r] = (freq[r]||0) + 1; });
+
+  // Score: freq + (últimoIndex bonus si aparece en últimos 6)
+  const weights = {};
+  numbers.forEach(n=>{
+    let score = freq[n];
+    const lastIdx = history.indexOf(n);
+    if (lastIdx !== -1 && lastIdx < 6) score += 2; // refuerzo si salió muy reciente
+    weights[n] = score;
+  });
+
+  // elegir el mayor score; si empate, desempatar con frecuencia total
+  let best = numbers[0];
+  let bestScore = -1;
+  numbers.forEach(n=>{
+    if (weights[n] > bestScore) { bestScore = weights[n]; best = n; }
+  });
+
+  // calcular confianza (0..1) relativa al total
+  const totalScore = Object.values(weights).reduce((a,b)=>a+b,0);
+  const confidence = totalScore === 0 ? 0 : (weights[best]/totalScore);
+  predictedNumber = best;
+  predictInfoEl.innerHTML = `Predicho: <b>${predictedNumber}</b> (confianza ${(confidence*100).toFixed(1)}%) — basado en últimos ${recent.length} spins`;
+  return predictedNumber;
+}
+
+/* Predicción visual (resalta celda) */
+predictBtn.addEventListener("click", ()=>{
+  if (spinning) return;
+  computePrediction();
+  document.querySelectorAll(".cell").forEach(c=>c.classList.remove("highlightPrediction"));
+  const targetCell = [...document.querySelectorAll(".cell")].find(c => Number(c.dataset.value) === predictedNumber);
+  if (targetCell) targetCell.classList.add("highlightPrediction");
+  messageEl.style.color = "#ffff00";
+  messageEl.innerHTML = `Predicción: ${predictedNumber} (${getColor(predictedNumber)})`;
+  setTimeout(()=>document.querySelectorAll(".cell").forEach(c=>c.classList.remove("highlightPrediction")), 2000);
+});
+
+/* función principal de giro (lanzar) */
+spinBtn.onclick = ()=>{
+  if (spinning) return;
+  if (bets.length === 0) return alert("Coloca al menos una apuesta.");
+
+  // desbloquear audio context si necesario
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const rpmR = parseInt(document.getElementById("rouletteSpeed").value, 10);
+  const rpmB = parseInt(document.getElementById("ballSpeed").value, 10);
+  spinning = true;
+  spinBtn.disabled = true;
+  predictBtn.disabled = true;
+
+  // resultado aleatorio
+  const predIndex = Math.floor(Math.random() * numbers.length);
+  resultNumber = numbers[predIndex];
+
+  // visual del resultado seleccionado
+  document.querySelectorAll(".cell").forEach(c=>c.classList.remove("highlightPrediction"));
+  const targetCell = [...document.querySelectorAll(".cell")].find(c => Number(c.dataset.value) === resultNumber);
+  if (targetCell) targetCell.classList.add("highlightPrediction");
+
+  messageEl.style.color = "#00ffff";
+  messageEl.innerHTML = `Lanzando... Predicción cuántica: ${resultNumber} (${getColor(resultNumber)})`;
+
+  canvas.classList.add("spinning");
+  if (audioEnabled) playSpinStart();
+
+  let time = 0;
+  const primaryDuration = 2200;
+  const intervalMs = 16;
+  const startRouletteAngle = rouletteAngle;
+  const anim = setInterval(()=>{
+    time += intervalMs;
+    rouletteAngle += (rpmR/60)*(2*Math.PI)*(intervalMs/1000);
+    ballAngle -= (rpmB/60)*(2*Math.PI)*(intervalMs/1000);
+
+    // reproducir ticks cuando la bola pasa por el puntero (simulacro)
+    // detectamos paso por ángulo -PI/2 +/- margen
+    const pointerAngle = -Math.PI/2;
+    const prev = (ballAngle + (rpmB/60)*(2*Math.PI)*(intervalMs/1000));
+    // si cruzó el puntero entre prev y ballAngle -> tick
+    if ((prev - pointerAngle) * (ballAngle - pointerAngle) < 0) {
+      if (audioEnabled) playTick();
+    }
+
+    drawRoulette(rouletteAngle, ballAngle);
+    if (time >= primaryDuration) {
+      clearInterval(anim);
+      const index = indexOfNumber(resultNumber);
+      alignToNumber(index, 4, 1200, ()=>{
+        spinning = false;
+        canvas.classList.remove("spinning");
+        spinBtn.disabled = false;
+        predictBtn.disabled = false;
+        checkResults();
+      });
+    }
+  }, intervalMs);
+};
+
+/* comprobar resultados y pagar */
+function checkResults(){
+  const result = resultNumber;
+  let win = 0;
+
+  // layout para verificar columnas y docenas
+  const layout = [
+    [3,6,9,12,15,18,21,24,27,30,33,36],
+    [2,5,8,11,14,17,20,23,26,29,32,35],
+    [1,4,7,10,13,16,19,22,25,28,31,34]
+  ];
+
+  bets.forEach(b=>{
+    const amount = Number(b.amount) || 0;
+    if (b.type === "number" && Number(b.value) === result) {
+      win += amount * 36; // paga 35:1 => devolver stake + 35*stake = 36*stake
+    }
+    if (b.type === "red" && getColor(result) === "red") {
+      win += amount * 2;
+    }
+    if (b.type === "black" && getColor(result) === "black") {
+      win += amount * 2;
+    }
+    if (b.type === "even" && result !== 0 && result % 2 === 0) {
+      win += amount * 2;
+    }
+    if (b.type === "odd" && result % 2 !== 0) {
+      win += amount * 2;
+    }
+    if (b.type === "low" && result >= 1 && result <= 18) {
+      win += amount * 2;
+    }
+    if (b.type === "high" && result >= 19 && result <= 36) {
+      win += amount * 2;
+    }
+    if (b.type === "dozen") {
+      const d = parseInt(b.value, 10);
+      if (result >= (d-1)*12+1 && result <= d*12) win += amount * 3;
+    }
+    if (b.type === "column") {
+      const col = parseInt(b.value, 10); // 0,1,2
+      let foundInColumn = false;
+      for (let r=0;r<3;r++){
+        for (let c=0;c<12;c++){
+          if (layout[r][c] === result && r === col) foundInColumn = true;
+        }
+      }
+      if (foundInColumn) win += amount * 3;
+    }
+  });
+
+  if (win > 0){
+    balance += win;
+    totalWinsAmount += win;
+    localStorage.setItem("totalWinsAmount", totalWinsAmount);
+
+    messageEl.style.color = "#00ff99";
+    messageEl.innerHTML = `🎉 Ganaste ${win.toLocaleString()} COP (Número ${result})`;
+    bigResultEl.innerText = `GANASTE ${win.toLocaleString()} COP — #${result}`;
+    if (audioEnabled) playWin();
+  } else {
+    messageEl.style.color = "#ff4444";
+    messageEl.innerHTML = `💸 Perdiste (Salió ${result})`;
+    bigResultEl.innerText = `SALIO ${result}`;
+  }
+
+  // actualizar historial y stats
+  history.unshift(result);
+  if (history.length > 2000) history.pop();
+  localStorage.setItem("history", JSON.stringify(history));
+
+  totalSpins += 1;
+  localStorage.setItem("totalSpins", totalSpins);
+
+  // incrementar contador del número
+  statsCount[result] = (statsCount[result]||0) + 1;
+  localStorage.setItem("statsCount", JSON.stringify(statsCount));
+
+  renderHistory();
+  updateStatsUI();
+
+  updateBalance();
+
+  // limpiar apuestas y overlays
+  bets = [];
+  document.querySelectorAll(".chipOverlay").forEach(o=>o.remove());
+
+  // limpiar predicción visual después
+  setTimeout(()=>document.querySelectorAll(".cell").forEach(c=>c.classList.remove("highlightPrediction")), 2000);
+
+  // limpiar bigResult después
+  setTimeout(()=>{ bigResultEl.innerText = ""; }, 3500);
+
+  // si autoplay activo, ejecutar siguiente
+  if (autoplayRunning) {
+    // delay breve entre spins para ver animación
+    setTimeout(()=>autoStep(), 900);
+  }
+}
+
+/* render historial en #result */
+function renderHistory(){
+  resultEl.innerText = history.length ? `Historial (últimos ${Math.min(history.length,30)}): ${history.slice(0,30).join(", ")}` : "";
+}
+
+/* reset */
+document.getElementById("reset").onclick = ()=>{
+  if (!confirm("Resetear balance, historial y estadísticas?")) return;
+  balance = 50000;
+  localStorage.setItem("balance", balance);
+  bets = [];
+  history = [];
+  localStorage.removeItem("history");
+  statsCount = {};
+  for (let n of numbers) statsCount[n]=0;
+  localStorage.removeItem("statsCount");
+  totalSpins = 0;
+  totalWinsAmount = 0;
+  totalStaked = 0;
+  localStorage.removeItem("totalSpins");
+  localStorage.removeItem("totalWinsAmount");
+  localStorage.removeItem("totalStaked");
+  updateBalance();
+  document.querySelectorAll(".chipOverlay").forEach(o=>o.remove());
+  messageEl.innerHTML = "";
+  resultEl.innerHTML = "";
+  bigResultEl.innerHTML = "";
+  document.querySelectorAll(".cell").forEach(c=>c.classList.remove("highlightPrediction"));
+  renderHistory();
+  updateStatsUI();
+};
+
+/* Estadísticas UI */
+function updateStatsUI(){
+  statTotalEl.innerText = totalSpins;
+  // hits: contamos cuantas veces el usuario acertó number bets
+  // Para simplificar: contamos spins donde en history[0] hubo alguna apuesta exacta (no persistimos)
+  // En su lugar mostramos totalWinsAmount como indicador
+  statHitsEl.innerText = totalWinsAmount ? "Mostrado en ganancias" : "0";
+
+  // ROI estimado = (totalWins - totalStaked)/totalStaked
+  const staked = parseInt(localStorage.getItem("totalStaked")) || totalStaked || 0;
+  const wins = totalWinsAmount || 0;
+  const roi = staked === 0 ? 0 : ((wins - staked) / staked) * 100;
+  statROIEl.innerText = `${roi.toFixed(1)}%`;
+
+  // preparar ranking hot/cold
+  const arr = Object.keys(statsCount).map(k=>({n:Number(k), c:statsCount[k] || 0}));
+  arr.sort((a,b)=>b.c - a.c);
+  const top = arr.slice(0,5);
+  const bottom = arr.slice(-5).reverse();
+  hotListEl.innerHTML = top.map(x=>`<div class="tag">${x.n} (${x.c})</div>`).join("");
+  coldListEl.innerHTML = bottom.map(x=>`<div class="tag">${x.n} (${x.c})</div>`).join("");
+}
+
+/* Autoplay (modo automático) */
+let autoRemaining = 0;
+function autoStep(){
+  if (!autoplayRunning) return;
+  if (autoRemaining <= 0) {
+    autoplayRunning = false;
+    autoStartBtn.innerText = "Start";
+    return;
+  }
+  // Si no hay apuestas actuales, detener (evita spins vacíos)
+  if (bets.length === 0) {
+    messageEl.innerText = "Autoplay detenido: sin apuestas.";
+    autoplayRunning = false;
+    autoStartBtn.innerText = "Start";
+    return;
+  }
+
+  autoRemaining--;
+  // lanzamos un spin programáticamente (se usa el código original)
+  spinBtn.click();
+}
+
+autoStartBtn.addEventListener("click", ()=>{
+  if (autoplayRunning) {
+    autoplayRunning = false;
+    autoStartBtn.innerText = "Start";
+    return;
+  }
+  // iniciar autoplay si hay apuestas
+  const count = parseInt(autoCount.value, 10) || 1;
+  if (bets.length === 0) {
+    alert("Coloca apuestas antes de usar autoplay.");
+    return;
+  }
+  autoRemaining = count;
+  autoplayRunning = true;
+  autoStartBtn.innerText = "Stop";
+  autoStep();
+});
+
+/* sound toggle */
+soundToggle.addEventListener("click", ()=>{
+  audioEnabled = !audioEnabled;
+  soundStatus.innerText = audioEnabled ? "ON" : "OFF";
+});
+
+/* cargar estadisticas guardadas si existen */
+(function loadSaved(){
+  const s = localStorage.getItem("statsCount");
+  if (s) statsCount = JSON.parse(s);
+  updateStatsUI();
+})();
+
+/* al cargar historial obtener conteos */
+(function recomputeCounts(){
+  if (history && history.length) {
+    statsCount = {};
+    for (let n of numbers) statsCount[n]=0;
+    history.forEach(h=>{ statsCount[h] = (statsCount[h]||0) + 1; });
+    localStorage.setItem("statsCount", JSON.stringify(statsCount));
+  }
+})();
+
+/* tecla espacio para lanzar (si no spinning) */
+document.addEventListener("keydown", e=>{
+  if (e.code === "Space") {
+    e.preventDefault();
+    document.getElementById("spin").click();
+  }
+});
+</script>
+</body>
+</html> 
